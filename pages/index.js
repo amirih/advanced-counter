@@ -1,159 +1,191 @@
-import {useState} from "react";
-import {Button, TimePicker} from "antd";
-import {GrPowerReset} from "react-icons/gr";
+import { useState } from "react";
+import { Button, TimePicker } from "antd";
+import { GrPowerReset } from "react-icons/gr";
 import moment from "moment";
 
+//@review tips:
+// 1.sum of total time and another timers are not equal
+
 const IndexPage = () => {
-    const defaultTotalTime = moment("00:00:30", "HH:mm:ss");
-    const defaultStepTime = moment("00:00:10", "HH:mm:ss");
-    const defaultDelayTime = moment("00:0:05", "HH:mm:ss");
-    const referenceTime = moment("00:0:00", "HH:mm:ss");
+  const defaultTotalTime = moment("00:00:16", "HH:mm:ss");
+  const defaultStepTime = moment("00:00:04", "HH:mm:ss");
+  const defaultDelayTime = moment("00:0:04", "HH:mm:ss");
+  const referenceTime = moment("00:0:00", "HH:mm:ss");
 
-    const [totalTime, setTotalTime] = useState(defaultTotalTime);
-    const [stepTime, setStepTime] = useState(defaultStepTime);
-    const [delayTime, setDelayTime] = useState(defaultDelayTime);
+  const [totalTime, setTotalTime] = useState(defaultTotalTime);
+  const [stepTime, setStepTime] = useState(defaultStepTime);
+  const [delayTime, setDelayTime] = useState(defaultDelayTime);
 
-  let totalInterval = undefined;
-  let comonInterval = undefined;
-  let delayInterval = undefined;
+  const [startButtonDisabled, setStartButtonDisabled] = useState(false);
+  const [stopButtonDisabled, setStopButtonDisabled] = useState(true);
 
-    const resetTotalTimeTo = (time = defaultTotalTime) => {
-        setTotalTime(time);
-    };
-    const resetStepTimeTo = (time = defaultStepTime) => {
-        setStepTime(time);
-    };
-    const resetDelayTimeTo = (time = defaultDelayTime) => {
-        setDelayTime(time);
-    };
+  const enable = false;
+  const disable = true;
 
-    const resetAll = () => {
-        resetTotalTimeTo();
-        resetStepTimeTo();
-        resetDelayTimeTo();
-    }
+  let baseTotalTime;
+  let baseStepTime;
+  let baseDelayTime;
+  let baseStartTime;
 
-    const startCounting = async () => {
-        const now = moment();
-        const baseTotalTime = totalTime;
-        const baseStepTime = stepTime;
-        const baseDelayTime = delayTime;
+  let startTime;
+  let isStepTurn = true;
 
-        await countDownTotalTime(totalTime, now);
-        await countDownStepTime(delayTime, stepTime, now);
-    };
-    const stopCounting = () => {
-        //reset timers
-        console.log("reset the timers")
+  let advancedInterval = undefined;
 
-    }
-    const pauseCounting = () => {
-        console.log("pause the timers")
-    }
-
-    const countDownTotalTime = (baseTotalTime, baseCountingTime) => {
-      totalInterval = setInterval(() => {
-            const timer = moment(baseTotalTime.diff(moment(moment().diff(baseCountingTime))))
-            setTotalTime(timer);
-            if (timer < referenceTime) {
-                resetTotalTimeTo(baseTotalTime);
-                clearInterval(totalInterval)
-            }
-        }, 1000);
-    };
-
-
-
-    const countDownStepTime = (baseDelayTime, baseStepTime, baseCountingTime) => {
-      clearInterval(comonInterval);
-      console.log("in countDownStepTime", comonInterval)
-
-      comonInterval = setInterval(() => {
-            const timer = moment(
-                baseStepTime.diff(moment(moment().diff(baseCountingTime)))
-            );
-            setStepTime(timer);
-            if (timer<referenceTime){
-              setStepTime(baseStepTime);
-               countDownDelayTime(baseDelayTime, baseStepTime, baseCountingTime)
-
-            }
-
-        }, 1000);
-    };
-  const countDownDelayTime = (baseDelayTime, baseStepTime, baseCountingTime) => {
-    clearInterval(comonInterval)
-    console.log("in countDownDelayTime", comonInterval)
-    comonInterval =  setInterval(() => {
-      const timer = moment(
-          baseDelayTime.diff(moment(moment().diff(baseCountingTime)))
-      );
-      setDelayTime(timer);
-      if (timer <referenceTime)
-        setDelayTime(baseDelayTime);
-
-       countDownStepTime(baseDelayTime, baseStepTime, baseCountingTime)
-
-    }, 1000);
+  const resetTotalTime = (time = defaultTotalTime) => {
+    setTotalTime(time);
   };
-    //utils
-    const getMilSeconds = (moment) => {
-        return moment.valueOf() - referenceTime.valueOf();
-    };
+  const resetStepTime = (time = defaultStepTime) => {
+    setStepTime(time);
+  };
+  const resetDelayTime = (time = defaultDelayTime) => {
+    setDelayTime(time);
+  };
 
-    return (
-        <div className="container">
-            <div>
-                <p>{JSON.stringify(stepTime)}</p>
-                <TimePicker
-                    value={totalTime}
-                    placeholder="Total Time"
-                    onSelect={resetTotalTimeTo}
-                    clearIcon=""
-                    suffixIcon=""
-                />
-                <Button
-                    onClick={resetTotalTimeTo}
-                    style={{border: "none"}}
-                    icon={<GrPowerReset/>}
-                ></Button>
-                <TimePicker
-                    value={stepTime}
-                    placeholder="Step Time"
-                    onSelect={resetStepTimeTo}
-                    clearIcon=""
-                    suffixIcon=""
+  const resetAllToDefault = () => {
+    resetTotalTime();
+    resetStepTime();
+    resetDelayTime();
+  };
+  const resetAllToBase = () => {
+    resetTotalTime(baseTotalTime);
+    resetStepTime(baseStepTime);
+    resetDelayTime(baseDelayTime);
+  };
 
-                />
-                <Button
-                    onClick={resetStepTimeTo}
-                    style={{border: "none"}}
-                    icon={<GrPowerReset/>}
-                ></Button>
-                <TimePicker
-                    value={delayTime}
-                    placeholder="Delay Time"
-                    onSelect={resetDelayTimeTo}
-                    clearIcon=""
-                    suffixIcon=""
-                />
-                <Button
-                    onClick={resetDelayTimeTo}
-                    style={{border: "none"}}
-                    icon={<GrPowerReset/>}
-                ></Button>
-                <Button
-                    onClick={resetAll}
-                >Reset All</Button>
+  const initialBaseTimes = () => {
+    baseTotalTime = totalTime;
+    baseStepTime = stepTime;
+    baseDelayTime = delayTime;
+    baseStartTime = moment();
+    startTime = moment();
+  };
+  const updateButtons = (startButton, StopButton) => {
+    setStartButtonDisabled(startButton);
+    setStopButtonDisabled(StopButton);
+  };
+  const startCounting = () => {
+    updateButtons(disable, enable);
+    initialBaseTimes();
 
-            </div>
-            <div style={{display: "flex", alignItems: "center"}}>
-                <Button onClick={startCounting}> Start</Button>
-                <Button onClick={stopCounting}> Stop</Button>
-                <Button onClick={pauseCounting}> Pause</Button>
-            </div>
-        </div>
-    );
+    advancedInterval = setInterval(() => {
+      countTotalTimer();
+      if (isStepTurn) {
+        countStepTimer();
+      } else {
+        countDelayTimer();
+      }
+    }, 200);
+  };
+
+  const countTotalTimer = () => {
+    const timer = getTimerValue(baseTotalTime, baseStartTime);
+
+    if (timer <= referenceTime) {
+      stopTotalTimer();
+      updateButtons(disable, enable);
+    } else {
+      setTotalTime(timer);
+    }
+  };
+  //------------------------------refactored and reviewed
+
+  const countStepTimer = () => {
+    const timer = getTimerValue(baseStepTime, startTime);
+    if (timer <= referenceTime) {
+      setStepTime(baseStepTime);
+
+      startTime = getNewStartTime(baseStepTime, startTime);
+      isStepTurn = false;
+    } else {
+      setStepTime(timer);
+    }
+  };
+
+  const countDelayTimer = () => {
+    const timer = getTimerValue(baseDelayTime, startTime);
+
+    if (timer <= referenceTime) {
+      setDelayTime(baseDelayTime);
+      startTime = getNewStartTime(baseDelayTime, startTime);
+
+      isStepTurn = true;
+    } else {
+      setDelayTime(timer);
+    }
+  };
+  const getTimerValue = (baseTime, startTime) => {
+    return moment(baseTime.diff(moment(moment().diff(startTime))));
+  };
+  const getNewStartTime = (baseTime, startTime) => {
+    return moment(startTime.add(baseTime.valueOf() - referenceTime.valueOf()));
+  };
+  const stopCounting = () => {
+    setStartButtonDisabled(false);
+    setStopButtonDisabled(true);
+
+    stopTotalTimer();
+    stopStepTimerAndResetTo();
+    stopDelayTimerAndResetTo();
+  };
+  const stopTotalTimer = () => {
+    clearInterval(advancedInterval);
+    resetAllToBase();
+  };
+
+  return (
+    <div className="container">
+      <div>
+        <TimePicker
+          value={totalTime}
+          placeholder="Total Time"
+          onSelect={resetTotalTime}
+          clearIcon=""
+          suffixIcon=""
+        />
+        <Button
+          onClick={resetTotalTime}
+          style={{ border: "none" }}
+          icon={<GrPowerReset />}
+        ></Button>
+        <TimePicker
+          value={stepTime}
+          placeholder="Step Time"
+          onSelect={resetStepTime}
+          clearIcon=""
+          suffixIcon=""
+        />
+        <Button
+          onClick={resetStepTime}
+          style={{ border: "none" }}
+          icon={<GrPowerReset />}
+        ></Button>
+        <TimePicker
+          value={delayTime}
+          placeholder="Delay Time"
+          onSelect={resetDelayTime}
+          clearIcon=""
+          suffixIcon=""
+        />
+        <Button
+          onClick={resetDelayTime}
+          style={{ border: "none" }}
+          icon={<GrPowerReset />}
+        ></Button>
+
+        <Button onClick={resetAllToDefault}>Reset All</Button>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <Button onClick={startCounting} disabled={startButtonDisabled}>
+          Start
+        </Button>
+        <Button onClick={stopCounting} disabled={stopButtonDisabled}>
+          Stop
+        </Button>
+      </div>
+    </div>
+  );
 };
 
 export default IndexPage;
